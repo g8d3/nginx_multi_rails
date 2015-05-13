@@ -1,0 +1,65 @@
+upstream app_one {
+    # Path to Unicorn SOCK file, as defined previously
+    server unix:/tmp/unicorn.app_1.sock fail_timeout=0;
+}
+
+upstream app_two {
+    server unix:/tmp/unicorn.app_2.sock fail_timeout=0;
+}
+
+upstream app_three {
+    server unix:/tmp/unicorn.app_3.sock fail_timeout=0;
+}
+
+server {
+    listen 80;
+    server_name localhost;
+    rewrite_log on;
+
+    location /{
+        # Application root, as defined previously
+        root /media/pills/backup/home/pills/ububtu/code/rails-3/public;
+        # rewrite ^/site1/?(.*)$ /$1 break;
+        try_files $uri/index.html $uri @app_3;
+    }
+
+    location @app_3 {
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header Host $http_host;
+        proxy_redirect off;
+        proxy_pass http://app_three;
+    }
+
+    location /site1{
+        # Application root, as defined previously
+        root /media/pills/backup/home/pills/ububtu/code/rails-test/public;
+        rewrite ^/site1/?(.*)$ /$1 break;
+        try_files $uri/index.html $uri @app;
+    }
+
+    location @app {
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header Host $http_host;
+        proxy_redirect off;
+        proxy_pass http://app_one;
+    }
+
+
+    location /site2{
+        # Application root, as defined previously
+        root /media/pills/backup/home/pills/ububtu/code/unicorn_2/public;
+        rewrite ^/site2/?(.*)$ /$1 break;
+        try_files $uri/index.html $uri @app2;
+    }
+
+    location @app2 {
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header Host $http_host;
+        proxy_redirect off;
+        proxy_pass http://app_two;
+    }
+
+    error_page 500 502 503 504 /500.html;
+    client_max_body_size 4G;
+    keepalive_timeout 10;
+} 
